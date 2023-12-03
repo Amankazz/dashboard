@@ -1,34 +1,45 @@
 import React, { useState, useEffect } from "react";
-import { dummyData } from "../dummyData";
+import { FiEdit } from "react-icons/fi";
+import {
+  MdOutlineDelete,
+  MdOutlineDeleteSweep,
+  MdOutlineKeyboardArrowRight,
+  MdOutlineKeyboardArrowLeft,
+} from "react-icons/md";
+
+// import { dummyData } from "../dummyData";
 
 const Home = () => {
   const [users, setUsers] = useState([]);
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [selectAll, setSelectAll] = useState(false); // New state to track whether all rows are selected
+  const [selectedRowsByPage, setSelectedRowsByPage] = useState({});
+  const [selectAll, setSelectAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  //   const getUsersData = async () => {
-  //     const data = await fetch(
-  //       "https://geektrust.s3-ap-southeast-1.amazonaws.com/adminui-problem/members.json"
-  //     );
-  //     const json = await data.json();
-  //     console.log(json);
-  //   };
-
-  const getUsersData = () => {
-    const data = dummyData;
-    console.log(data);
-    return data;
-  };
+  // const getUsersData = () => {
+  //   const data = dummyData;
+  //   console.log(data);
+  //   return data;
+  // };
 
   useEffect(() => {
-    const userData = getUsersData();
-    setUsers(userData);
+    const getUsersData = async () => {
+      try {
+        const data = await fetch(
+          "https://geektrust.s3-ap-southeast-1.amazonaws.com/adminui-problem/members.json"
+        );
+        const json = await data.json();
+        console.log(json);
+        setUsers(json); // Set the users data after fetching
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    getUsersData();
   }, []);
 
-  // Filtered and paginated users based on search term
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -36,23 +47,16 @@ const Home = () => {
       user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Calculate total pages based on filtered users
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
-  // Paginate the users based on the current page
   const paginatedUsers = filteredUsers.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  const handleSelectRow = (rowId) => {
-    if (selectedRows.includes(rowId)) {
-      setSelectedRows(selectedRows.filter((id) => id !== rowId));
-    } else {
-      setSelectedRows([...selectedRows, rowId]);
-    }
-  };
-
+  {
+    /** Function edit row*/
+  }
   const handleEdit = (userId) => {
     setUsers((prevUsers) =>
       prevUsers.map((user) =>
@@ -67,7 +71,9 @@ const Home = () => {
       )
     );
   };
-
+  {
+    /** Function Save edited row*/
+  }
   const handleSave = (userId) => {
     setUsers((prevUsers) =>
       prevUsers.map((user) =>
@@ -78,6 +84,9 @@ const Home = () => {
     );
   };
 
+  {
+    /** Function for handeling input while editing row content*/
+  }
   const handleInputChange = (userId, field, value) => {
     setUsers((prevUsers) =>
       prevUsers.map((user) =>
@@ -85,107 +94,140 @@ const Home = () => {
       )
     );
   };
-
+  {
+    /** Function to delete individual row*/
+  }
   const handleDelete = (userId) => {
     const updatedUsers = users.filter((user) => user.id !== userId);
     setUsers(updatedUsers);
   };
 
-  //////
-  const handleSelectAll = () => {
-    const startId = (currentPage - 1) * itemsPerPage + 1;
-    const endId = Math.min(currentPage * itemsPerPage, users.length);
+  {
+    /** Function Select individual row*/
+  }
+  const handleSelectRow = (rowId) => {
+    const updatedSelectedRowsByPage = { ...selectedRowsByPage };
 
-    // Get all IDs on the current page
-    const pageIds = Array.from(
-      { length: endId - startId + 1 },
-      (_, index) => startId + index
-    );
-    console.log("pageIds", pageIds);
-
-    // Check if all rows on the current page are already selected
-    const allSelected = pageIds.every((id) => selectedRows.includes(id));
-    console.log("allSelected", allSelected);
-
-    if (allSelected) {
-      setSelectedRows(selectedRows.filter((id) => !pageIds.includes(id)));
-      setSelectAll(false); // Unselect all when not all rows are selected
-    } else {
-      setSelectedRows([...selectedRows, ...pageIds]);
-      setSelectAll(true); // Select all when not all rows are selected
+    if (!updatedSelectedRowsByPage[currentPage]) {
+      updatedSelectedRowsByPage[currentPage] = [];
     }
-    console.log("selectedRows", selectedRows);
+
+    if (updatedSelectedRowsByPage[currentPage].includes(rowId)) {
+      updatedSelectedRowsByPage[currentPage] = updatedSelectedRowsByPage[
+        currentPage
+      ].filter((id) => id !== rowId);
+    } else {
+      updatedSelectedRowsByPage[currentPage] = [
+        ...updatedSelectedRowsByPage[currentPage],
+        rowId,
+      ];
+    }
+
+    setSelectedRowsByPage(updatedSelectedRowsByPage);
+
+    // Check if all rows on the current page are selected
+    const allRowsSelectedOnPage =
+      updatedSelectedRowsByPage[currentPage].length === paginatedUsers.length;
+
+    // Update selectAll state based on whether all rows on the current page are selected
+    setSelectAll(allRowsSelectedOnPage);
   };
 
-  // Handle delete selected rows
-  // const handleDeleteSelected = () => {
-  //   const updatedUsers = users.filter(
-  //     (user) => !selectedRows.includes(user.id)
-  //   );
-  //   setUsers(updatedUsers);
-  //   setSelectedRows([]);
-  //   setSelectAll(false); // Unselect all after deleting selected rows
-  //   updateRowIds(); // Update the IDs of the rows
-  // };
+  {
+    /** Function for Select all rows  */
+  }
+  const handleSelectAll = () => {
+    const allUserIdsOnPage = paginatedUsers.map((user) => user.id);
+    const updatedSelectedRowsByPage = { ...selectedRowsByPage };
 
+    if (!selectAll) {
+      updatedSelectedRowsByPage[currentPage] = allUserIdsOnPage;
+    } else {
+      updatedSelectedRowsByPage[currentPage] = [];
+    }
+
+    setSelectedRowsByPage(updatedSelectedRowsByPage);
+    setSelectAll((selected) => !selected);
+  };
+
+  {
+    /** Function for Delete multiple Selected rows*/
+  }
   const handleDeleteSelected = () => {
     const updatedUsers = users.filter(
-      (user) => !selectedRows.includes(user.id)
+      (user) => !Object.values(selectedRowsByPage).flat().includes(user.id)
     );
+
     setUsers(updatedUsers);
-    setSelectedRows([]);
+    setSelectedRowsByPage({});
     setSelectAll(false);
   };
 
-  // Update the IDs of the rows
-  const updateRowIds = () => {
-    const updatedUsers = users.map((user, index) => ({
-      ...user,
-      id: index + 1,
-    }));
-    setUsers(updatedUsers);
+  const changePage = (page) => {
+    setCurrentPage(page);
+    setSelectAll(!!selectedRowsByPage[page]?.length);
   };
-  //////
 
   return (
-    <div className="container mx-auto p-4 bg-gray-500">
-      <input
-        type="text"
-        placeholder="Search"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="p-2 mb-4 border rounded"
-      />
-      <table className="w-full">
+    <div className="container mx-auto p-4 ">
+      {/** Header part [Searchbox + Bulk/selected Delete Button] */}
+      <div className="container px-4 flex justify-between items-center bg-blue-200">
+        <input
+          type="text"
+          placeholder="Search"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="p-2 m-2 border rounded-md"
+        />
+        <MdOutlineDeleteSweep
+          className="bg-red-500 rounded-md text-white p-2 hover:bg-red-800 cursor-pointer"
+          onClick={() => {
+            handleDeleteSelected();
+            // Change page and update selectAll when deleting selected rows
+            changePage(currentPage);
+          }}
+          fontSize={35}
+        />
+      </div>
+      {/** Dashboaord Table */}
+      <table className="w-full border-2 ">
         <thead>
           <tr>
-            <th className="p-2">
+            <th className="p-4">
               <input
                 type="checkbox"
-                checked={selectAll}
                 onChange={handleSelectAll}
+                checked={selectAll}
+                className="h-4 w-4"
               />
             </th>
-            <th className="p-2">Name</th>
-            <th className="p-2">Email</th>
-            <th className="p-2">Role</th>
-            <th className="p-2">Actions</th>
+            <th className="p-4">Name</th>
+            <th className="p-4">Email</th>
+            <th className="p-4">Role</th>
+            <th className="p-4">Actions</th>
           </tr>
         </thead>
+
+        {/** Dashboaord Table Body */}
         <tbody>
           {paginatedUsers.map((user) => (
             <tr
               key={user.id}
-              className={selectedRows.includes(user.id) ? "bg-gray-300" : ""}
+              className={`border-2 ${`hover:bg-gray-100 ${
+                selectedRowsByPage[currentPage]?.includes(user.id)
+                  ? "bg-gray-200"
+                  : ""
+              }`} ${user.isEditing && "bg-blue-100"}`}
             >
-              <td className="p-2">
+              <td className="p-4 text-center">
                 <input
                   type="checkbox"
-                  checked={selectedRows.includes(user.id)}
+                  checked={selectedRowsByPage[currentPage]?.includes(user.id)}
                   onChange={() => handleSelectRow(user.id)}
+                  className="h-4 w-4"
                 />
               </td>
-              <td className="p-2">
+              <td className="p-4 text-center">
                 {user.isEditing ? (
                   <input
                     type="text"
@@ -198,7 +240,7 @@ const Home = () => {
                   user.name
                 )}
               </td>
-              <td className="p-2">
+              <td className="p-4 text-center">
                 {user.isEditing ? (
                   <input
                     type="email"
@@ -211,7 +253,7 @@ const Home = () => {
                   user.email
                 )}
               </td>
-              <td className="p-2">
+              <td className="p-4 p-4 text-center">
                 {user.isEditing ? (
                   <select
                     value={user.role}
@@ -226,80 +268,74 @@ const Home = () => {
                   user.role
                 )}
               </td>
-              <td className="p-2">
+              <td className="p-4 text-center">
                 {user.isEditing ? (
                   <button
-                    className="bg-green-500 text-white px-2 py-1 mr-2"
+                    className="bg-green-500 rounded-md text-white px-4 py-2 mr-2 hover:bg-green-600"
                     onClick={() => handleSave(user.id)}
                   >
                     Save
                   </button>
                 ) : (
                   <button
-                    className="bg-blue-500 text-white px-2 py-1 mr-2"
+                    className="border-2 rounded-md border-gray-300 text-gray-500 px-2 py-1 mr-2 hover:bg-gray-300"
                     onClick={() => handleEdit(user.id)}
                   >
-                    Edit
+                    <FiEdit />
                   </button>
                 )}
                 <button
-                  className="bg-red-500 text-white px-2 py-1"
+                  className="border-2 rounded-md border-gray-300 text-red-500 px-2 py-1 hover:bg-red-300"
                   onClick={() => handleDelete(user.id)}
                 >
-                  Delete
+                  <MdOutlineDelete />
                 </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      // Pagination footer //
-      <div className="mt-4 flex justify-between items-center">
-        <div>
+      /// Pagination ///
+      <div className="mt-4 flex justify-end items-center">
+        <div className="flex">
           <button
-            className="bg-blue-500 text-white px-2 py-1 mr-2"
-            onClick={() => setCurrentPage(1)}
+            className="border-2 rounded-md border-gray-300 text-gray-500 hover:bg-gray-300 px-2 py-1 mr-2"
+            onClick={() => changePage(1)}
           >
             First Page
           </button>
           <button
-            className="bg-blue-500 text-white px-2 py-1 mr-2"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            className="border-2 rounded-md border-gray-300 text-gray-500 hover:bg-gray-300 px-2 py-1 mr-2"
+            onClick={() => changePage(Math.max(currentPage - 1, 1))}
           >
-            Previous Page
+            <MdOutlineKeyboardArrowLeft fontSize={20} />
           </button>
           {[...Array(totalPages).keys()].map((page) => (
             <button
               key={page + 1}
               className={`px-2 py-1 ${
-                currentPage === page + 1 ? "bg-blue-500 text-white" : ""
+                currentPage === page + 1
+                  ? "rounded-md bg-blue-500 text-white"
+                  : ""
               }`}
-              onClick={() => setCurrentPage(page + 1)}
+              onClick={() => changePage(page + 1)}
             >
               {page + 1}
             </button>
           ))}
           <button
-            className="bg-blue-500 text-white px-2 py-1 mr-2"
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
+            className="border-2 rounded-md border-gray-300 text-gray-500 hover:bg-gray-300 px-2 py-1 mr-2"
+            onClick={() => changePage(Math.min(currentPage + 1, totalPages))}
           >
-            Next Page
+            <MdOutlineKeyboardArrowRight fontSize={20} />
           </button>
           <button
-            className="bg-blue-500 text-white px-2 py-1"
-            onClick={() => setCurrentPage(totalPages)}
+            className="border-2 rounded-md border-gray-300 text-gray-500 hover:bg-gray-300 px-2 py-1"
+            onClick={() => changePage(totalPages)}
           >
             Last Page
           </button>
         </div>
-        <button
-          className="bg-red-500 text-white px-2 py-1"
-          onClick={handleDeleteSelected}
-        >
-          Delete Selected
-        </button>
       </div>
     </div>
   );
